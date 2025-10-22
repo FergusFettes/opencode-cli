@@ -1,0 +1,31 @@
+[project]
+name = "opencode-client"
+version = "0.1.0"
+description = "Python client for opencode server API"
+readme = "README.md"
+authors = [
+    { name = "Fergus Fettes", email = "fergusfettes@gmail.com" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "httpx>=0.28.0",
+]
+keywords = ["opencode", "ai", "agent", "client", "sdk"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+[project.urls]
+Homepage = "https://github.com/fergusfettes/opencode-client"
+Repository = "https://github.com/fergusfettes/opencode-client"
+
+[build-system]
+requires = ["uv_build>=0.9.3,<0.10.0"]
+build-backend = "uv_build"
