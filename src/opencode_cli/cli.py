@@ -159,15 +159,68 @@ def info(
         session_data = client.get_session(session_id)
         
         if json:
-            console.print(JSON.from_data(session_data.model_dump()))
+            console.print(JSON.from_data(session_data))
             return
         
         console.print(f"[bold]Session Info[/bold]")
-        console.print(f"ID: {session_data.id or ''}")
-        console.print(f"Title: {session_data.title or 'Untitled'}")
-        if session_data.time:
-            console.print(f"Created: {session_data.time.created or ''}")
-            console.print(f"Updated: {session_data.time.updated or ''}")
+        console.print(f"ID: {session_data.get('id', '')}")
+        console.print(f"Title: {session_data.get('title', 'Untitled')}")
+        time_data = session_data.get('time', {})
+        if time_data:
+            console.print(f"Created: {time_data.get('created', '')}")
+            console.print(f"Updated: {time_data.get('updated', '')}")
+        
+    except Exception as e:
+        handle_error(e)
+
+
+@app.command()
+def rename(
+    session_id: str = typer.Argument(..., help="Session ID or title"),
+    new_title: str = typer.Argument(..., help="New title for the session"),
+):
+    """
+    Rename a session.
+    
+    Example: oc rename headless-1 "New Title"
+    Example: oc rename ses_abc123 "New Title"
+    """
+    try:
+        client = OpencodeClientWrapper()
+        result = client.rename_session(session_id, new_title)
+        console.print(f"[green]Session renamed successfully[/green]")
+        console.print(f"ID: {result['id']}")
+        console.print(f"New Title: {result['title']}")
+        
+    except Exception as e:
+        handle_error(e)
+
+
+@app.command()
+def delete(
+    session_id: str = typer.Argument(..., help="Session ID or title"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation"),
+):
+    """
+    Delete a session.
+    
+    Example: oc delete headless-1
+    Example: oc delete ses_abc123 --yes
+    """
+    try:
+        client = OpencodeClientWrapper()
+        
+        if not yes:
+            session_data = client.get_session(session_id)
+            confirm = typer.confirm(
+                f"Delete session '{session_data.title}' ({session_data.id})?"
+            )
+            if not confirm:
+                console.print("[yellow]Cancelled[/yellow]")
+                raise typer.Exit(0)
+        
+        client.delete_session(session_id)
+        console.print(f"[green]Session deleted successfully[/green]")
         
     except Exception as e:
         handle_error(e)

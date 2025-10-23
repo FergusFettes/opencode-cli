@@ -1,6 +1,7 @@
 """Wrapper around official opencode-ai SDK with helper methods for CLI"""
 import os
-from typing import Optional
+from typing import Optional, Any
+import httpx
 from opencode_ai import Opencode
 
 
@@ -8,8 +9,8 @@ class OpencodeClientWrapper:
     """Wrapper for opencode-ai client with CLI-specific helpers"""
     
     def __init__(self, base_url: Optional[str] = None):
-        base_url = base_url or os.getenv("OPENCODE_SERVER", "http://localhost:36000")
-        self.client = Opencode(base_url=base_url)
+        self.base_url = base_url or os.getenv("OPENCODE_SERVER", "http://localhost:36000")
+        self.client = Opencode(base_url=self.base_url)
         
     def _resolve_session(self, session_identifier: str) -> str:
         """Resolve session title to session ID"""
@@ -31,29 +32,46 @@ class OpencodeClientWrapper:
         """List all sessions"""
         return self.client.session.list()
     
-    def get_session(self, session_id: str):
-        """Get session by ID or title"""
+    def get_session(self, session_id: str) -> dict[str, Any]:
+        """Get session by ID or title (using direct API)"""
         session_id = self._resolve_session(session_id)
-        return self.client.session.get(path={"id": session_id})
+        response = httpx.get(f"{self.base_url}/session/{session_id}")
+        response.raise_for_status()
+        return response.json()
     
     def create_session(self, title: Optional[str] = None):
         """Create a new session"""
-        body = {}
+        extra_body = {}
         if title:
-            body["title"] = title
-        return self.client.session.create(body=body)
+            extra_body["title"] = title
+        return self.client.session.create(extra_body=extra_body)
     
     def list_messages(self, session_id: str):
         """List messages in a session"""
         session_id = self._resolve_session(session_id)
-        return self.client.session.messages(path={"id": session_id})
+        return self.client.session.messages(session_id)
     
     def send_message(self, session_id: str, message: str):
         """Send a message to a session"""
         session_id = self._resolve_session(session_id)
-        return self.client.session.prompt(
-            path={"id": session_id},
-            body={
+        return self.client.session.chat(
+            session_id,
+            extra_body={
                 "parts": [{"type": "text", "text": message}]
             }
         )
+    
+    def rename_session(self, session_id: str, new_title: str) -> dict[str, Any]:
+        """Rename a session (SDK missing update method, using direct API)"""
+        session_id = self._resolve_session(session_id)
+        response = httpx.patch(
+            f"{self.base_url}/session/{session_id}",
+            json={"title": new_title}
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def delete_session(self, session_id: str):
+        """Delete a session"""
+        session_id = self._resolve_session(session_id)
+        self.client.session.delete(session_id)
