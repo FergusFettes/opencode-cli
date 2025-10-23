@@ -54,11 +54,17 @@ class OpencodeClientWrapper:
     def send_message(self, session_id: str, message: str):
         """Send a message to a session"""
         session_id = self._resolve_session(session_id)
+        session_info = self.get_session(session_id)
+        
+        mode = session_info.get("mode", {})
+        model_id = mode.get("modelID", "claude-sonnet-4-5")
+        provider_id = mode.get("providerID", "anthropic")
+        
         return self.client.session.chat(
             session_id,
-            extra_body={
-                "parts": [{"type": "text", "text": message}]
-            }
+            model_id=model_id,
+            provider_id=provider_id,
+            parts=[{"type": "text", "text": message}]
         )
     
     def rename_session(self, session_id: str, new_title: str) -> dict[str, Any]:
