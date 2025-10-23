@@ -1,18 +1,18 @@
 [project]
-name = "opencode-sdk"
-version = "0.2.0"
-description = "Python client for opencode server API"
+name = "opencode-cli"
+version = "0.1.0"
+description = "CLI tool for opencode server API"
 readme = "README.md"
 authors = [
     { name = "Fergus Fettes", email = "fergusfettes@gmail.com" }
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "httpx>=0.28.0",
+    "opencode-ai>=0.1.0a36",
     "rich>=14.2.0",
     "typer>=0.20.0",
 ]
-keywords = ["opencode", "ai", "agent", "client", "sdk"]
+keywords = ["opencode", "ai", "agent", "cli"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -25,11 +25,11 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/fergusfettes/opencode-client"
-Repository = "https://github.com/fergusfettes/opencode-client"
+Homepage = "https://github.com/fergusfettes/opencode-cli"
+Repository = "https://github.com/fergusfettes/opencode-cli"
 
 [project.scripts]
-oc = "opencode_sdk.cli:app"
+oc = "opencode_cli.cli:app"
 
 [build-system]
 requires = ["uv_build>=0.9.3,<0.10.0"]

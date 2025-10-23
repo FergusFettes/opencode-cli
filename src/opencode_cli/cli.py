@@ -4,7 +4,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.json import JSON
 
-from .client import OpencodeClient
+from .client import OpencodeClientWrapper
 
 app = typer.Typer(
     help="CLI tool for opencode server API - interact with running opencode servers",
@@ -28,11 +28,11 @@ def sessions(
     Example: oc sessions
     """
     try:
-        client = OpencodeClient()
+        client = OpencodeClientWrapper()
         sessions_data = client.list_sessions()
         
         if json:
-            console.print(JSON.from_data(sessions_data))
+            console.print(JSON.from_data([s.model_dump() for s in sessions_data]))
             return
         
         if not sessions_data:
@@ -46,9 +46,9 @@ def sessions(
         
         for session in sessions_data:
             table.add_row(
-                session.get("id", ""),
-                session.get("title", "Untitled"),
-                str(session.get("time", {}).get("created", ""))
+                session.id or "",
+                session.title or "Untitled",
+                str(session.time.created if session.time else "")
             )
         
         console.print(table)
@@ -69,11 +69,11 @@ def messages(
     Example: oc messages headless-1
     """
     try:
-        client = OpencodeClient()
+        client = OpencodeClientWrapper()
         messages_data = client.list_messages(session_id)
         
         if json:
-            console.print(JSON.from_data(messages_data))
+            console.print(JSON.from_data([{"info": m.info.model_dump(), "parts": [p.model_dump() for p in m.parts]} for m in messages_data]))
             return
         
         if not messages_data:
@@ -81,21 +81,22 @@ def messages(
             return
         
         for msg in messages_data:
-            info = msg.get("info", {})
-            parts = msg.get("parts", [])
+            info = msg.info
+            parts = msg.parts
             
-            role = info.get("role", "unknown")
-            timestamp = info.get("timeCreated", "")
+            role = info.role or "unknown"
+            timestamp = info.time_created or ""
             
             console.print(f"\n[bold cyan]{role.upper()}[/bold cyan] [{timestamp}]")
             
             for part in parts:
-                if part.get("type") == "text":
-                    console.print(part.get("text", ""))
-                elif part.get("type") == "tool_use":
-                    console.print(f"[yellow]Tool: {part.get('name')}[/yellow]")
-                elif part.get("type") == "tool_result":
-                    console.print(f"[green]Result: {part.get('content', '')[:100]}...[/green]")
+                part_dict = part.model_dump()
+                if part_dict.get("type") == "text":
+                    console.print(part_dict.get("text", ""))
+                elif part_dict.get("type") == "tool_use":
+                    console.print(f"[yellow]Tool: {part_dict.get('name')}[/yellow]")
+                elif part_dict.get("type") == "tool_result":
+                    console.print(f"[green]Result: {str(part_dict.get('content', ''))[:100]}...[/green]")
         
     except Exception as e:
         handle_error(e)
@@ -113,10 +114,10 @@ def send(
     Example: oc send headless-1 "hello world"
     """
     try:
-        client = OpencodeClient()
+        client = OpencodeClientWrapper()
         result = client.send_message(session_id, message)
         console.print(f"[green]Message sent successfully[/green]")
-        console.print(f"Message ID: {result.get('id', 'unknown')}")
+        console.print(f"Message ID: {result.info.id if result.info else 'unknown'}")
         
     except Exception as e:
         handle_error(e)
@@ -132,11 +133,11 @@ def create(
     Example: oc create --title "My new session"
     """
     try:
-        client = OpencodeClient()
+        client = OpencodeClientWrapper()
         result = client.create_session(title)
         console.print(f"[green]Session created successfully[/green]")
-        console.print(f"Session ID: {result.get('id', 'unknown')}")
-        console.print(f"Title: {result.get('title', 'Untitled')}")
+        console.print(f"Session ID: {result.id or 'unknown'}")
+        console.print(f"Title: {result.title or 'Untitled'}")
         
     except Exception as e:
         handle_error(e)
@@ -154,19 +155,19 @@ def info(
     Example: oc info headless-1
     """
     try:
-        client = OpencodeClient()
+        client = OpencodeClientWrapper()
         session_data = client.get_session(session_id)
         
         if json:
-            console.print(JSON.from_data(session_data))
+            console.print(JSON.from_data(session_data.model_dump()))
             return
         
         console.print(f"[bold]Session Info[/bold]")
-        console.print(f"ID: {session_data.get('id', '')}")
-        console.print(f"Title: {session_data.get('title', 'Untitled')}")
-        time_data = session_data.get('time', {})
-        console.print(f"Created: {time_data.get('created', '')}")
-        console.print(f"Updated: {time_data.get('updated', '')}")
+        console.print(f"ID: {session_data.id or ''}")
+        console.print(f"Title: {session_data.title or 'Untitled'}")
+        if session_data.time:
+            console.print(f"Created: {session_data.time.created or ''}")
+            console.print(f"Updated: {session_data.time.updated or ''}")
         
     except Exception as e:
         handle_error(e)
