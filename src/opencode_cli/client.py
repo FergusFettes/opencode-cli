@@ -8,9 +8,9 @@ from opencode_ai import Opencode
 class OpencodeClientWrapper:
     """Wrapper for opencode-ai client with CLI-specific helpers"""
     
-    def __init__(self, base_url: Optional[str] = None):
+    def __init__(self, base_url: Optional[str] = None, timeout: float = 60.0, max_retries: int = 2):
         self.base_url = base_url or os.getenv("OPENCODE_SERVER", "http://localhost:36000")
-        self.client = Opencode(base_url=self.base_url)
+        self.client = Opencode(base_url=self.base_url, timeout=timeout, max_retries=max_retries)
         
     def _resolve_session(self, session_identifier: str) -> str:
         """Resolve session title to session ID"""

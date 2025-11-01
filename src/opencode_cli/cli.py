@@ -85,7 +85,7 @@ def messages(
             parts = msg.parts
             
             role = info.role or "unknown"
-            timestamp = info.time_created or ""
+            timestamp = info.time.created if info.time else ""
             
             console.print(f"\n[bold cyan]{role.upper()}[/bold cyan] [{timestamp}]")
             
