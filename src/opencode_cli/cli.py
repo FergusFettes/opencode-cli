@@ -228,3 +228,39 @@ def delete(
 
 if __name__ == "__main__":
     app()
+
+@app.command()
+def create_setup(
+    title: str = typer.Argument(..., help="Final session title"),
+    message: str = typer.Argument(..., help="Initial setup message to send"),
+):
+    """
+    Create a new session, send initial message, then rename to desired title.
+    
+    This avoids OpenCode's auto-renaming behavior which happens on first message.
+    
+    Example: oc create-setup "Interview Practice" "Activate chemify-context skill"
+    """
+    try:
+        client = OpencodeClientWrapper()
+        
+        # Create with temporary title
+        console.print("[yellow]Creating session...[/yellow]")
+        session = client.create_session(title="temp-session")
+        session_id = session.id
+        console.print(f"Session ID: {session_id}")
+        
+        # Send initial message (triggers auto-rename)
+        console.print("[yellow]Sending initial message...[/yellow]")
+        client.send_message(session_id, message)
+        console.print("[green]Message sent[/green]")
+        
+        # Rename to desired title
+        console.print(f"[yellow]Renaming to '{title}'...[/yellow]")
+        client.rename_session(session_id, title)
+        console.print(f"[green]Session created and configured![/green]")
+        console.print(f"Session ID: {session_id}")
+        console.print(f"Title: {title}")
+        
+    except Exception as e:
+        handle_error(e)
