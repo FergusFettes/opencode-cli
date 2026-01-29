@@ -8,7 +8,7 @@ from .client import OpencodeClientWrapper
 
 app = typer.Typer(
     help="CLI tool for opencode server API - interact with running opencode servers",
-    epilog="Connects to opencode server at http://localhost:36000 by default"
+    epilog="Connects to opencode server at http://localhost:36000 by default",
 )
 console = Console()
 
@@ -24,35 +24,35 @@ def sessions(
 ):
     """
     List all sessions on the opencode server.
-    
+
     Example: oc sessions
     """
     try:
         client = OpencodeClientWrapper()
         sessions_data = client.list_sessions()
-        
+
         if json:
             console.print(JSON.from_data([s.model_dump() for s in sessions_data]))
             return
-        
+
         if not sessions_data:
             console.print("[yellow]No sessions found[/yellow]")
             return
-        
+
         table = Table(title="OpenCode Sessions")
         table.add_column("ID", style="cyan")
         table.add_column("Title", style="green")
         table.add_column("Created", style="yellow")
-        
+
         for session in sessions_data:
             table.add_row(
                 session.id or "",
                 session.title or "Untitled",
-                str(session.time.created if session.time else "")
+                str(session.time.created if session.time else ""),
             )
-        
+
         console.print(table)
-        
+
     except Exception as e:
         handle_error(e)
 
@@ -64,31 +64,41 @@ def messages(
 ):
     """
     List all messages in a session.
-    
+
     Example: oc messages abc123
     Example: oc messages headless-1
     """
     try:
         client = OpencodeClientWrapper()
         messages_data = client.list_messages(session_id)
-        
+
         if json:
-            console.print(JSON.from_data([{"info": m.info.model_dump(), "parts": [p.model_dump() for p in m.parts]} for m in messages_data]))
+            console.print(
+                JSON.from_data(
+                    [
+                        {
+                            "info": m.info.model_dump(),
+                            "parts": [p.model_dump() for p in m.parts],
+                        }
+                        for m in messages_data
+                    ]
+                )
+            )
             return
-        
+
         if not messages_data:
             console.print("[yellow]No messages found[/yellow]")
             return
-        
+
         for msg in messages_data:
             info = msg.info
             parts = msg.parts
-            
+
             role = info.role or "unknown"
             timestamp = info.time.created if info.time else ""
-            
+
             console.print(f"\n[bold cyan]{role.upper()}[/bold cyan] [{timestamp}]")
-            
+
             for part in parts:
                 part_dict = part.model_dump()
                 if part_dict.get("type") == "text":
@@ -96,8 +106,10 @@ def messages(
                 elif part_dict.get("type") == "tool_use":
                     console.print(f"[yellow]Tool: {part_dict.get('name')}[/yellow]")
                 elif part_dict.get("type") == "tool_result":
-                    console.print(f"[green]Result: {str(part_dict.get('content', ''))[:100]}...[/green]")
-        
+                    console.print(
+                        f"[green]Result: {str(part_dict.get('content', ''))[:100]}...[/green]"
+                    )
+
     except Exception as e:
         handle_error(e)
 
@@ -109,7 +121,7 @@ def send(
 ):
     """
     Send a message to a session.
-    
+
     Example: oc send abc123 "hello world"
     Example: oc send headless-1 "hello world"
     """
@@ -117,8 +129,14 @@ def send(
         client = OpencodeClientWrapper()
         result = client.send_message(session_id, message)
         console.print(f"[green]Message sent successfully[/green]")
-        console.print(f"Message ID: {result.info.id if result.info else 'unknown'}")
-        
+        # result.info is a dict, not an object
+        msg_id = (
+            result.info.get("id", "unknown")
+            if isinstance(result.info, dict)
+            else (result.info.id if result.info else "unknown")
+        )
+        console.print(f"Message ID: {msg_id}")
+
     except Exception as e:
         handle_error(e)
 
@@ -129,7 +147,7 @@ def create(
 ):
     """
     Create a new session.
-    
+
     Example: oc create --title "My new session"
     """
     try:
@@ -138,7 +156,7 @@ def create(
         console.print(f"[green]Session created successfully[/green]")
         console.print(f"Session ID: {result.id or 'unknown'}")
         console.print(f"Title: {result.title or 'Untitled'}")
-        
+
     except Exception as e:
         handle_error(e)
 
@@ -150,26 +168,26 @@ def info(
 ):
     """
     Get detailed info about a session.
-    
+
     Example: oc info abc123
     Example: oc info headless-1
     """
     try:
         client = OpencodeClientWrapper()
         session_data = client.get_session(session_id)
-        
+
         if json:
             console.print(JSON.from_data(session_data))
             return
-        
+
         console.print(f"[bold]Session Info[/bold]")
         console.print(f"ID: {session_data.get('id', '')}")
         console.print(f"Title: {session_data.get('title', 'Untitled')}")
-        time_data = session_data.get('time', {})
+        time_data = session_data.get("time", {})
         if time_data:
             console.print(f"Created: {time_data.get('created', '')}")
             console.print(f"Updated: {time_data.get('updated', '')}")
-        
+
     except Exception as e:
         handle_error(e)
 
@@ -181,7 +199,7 @@ def rename(
 ):
     """
     Rename a session.
-    
+
     Example: oc rename headless-1 "New Title"
     Example: oc rename ses_abc123 "New Title"
     """
@@ -191,7 +209,7 @@ def rename(
         console.print(f"[green]Session renamed successfully[/green]")
         console.print(f"ID: {result['id']}")
         console.print(f"New Title: {result['title']}")
-        
+
     except Exception as e:
         handle_error(e)
 
@@ -203,13 +221,13 @@ def delete(
 ):
     """
     Delete a session.
-    
+
     Example: oc delete headless-1
     Example: oc delete ses_abc123 --yes
     """
     try:
         client = OpencodeClientWrapper()
-        
+
         if not yes:
             session_data = client.get_session(session_id)
             confirm = typer.confirm(
@@ -218,16 +236,75 @@ def delete(
             if not confirm:
                 console.print("[yellow]Cancelled[/yellow]")
                 raise typer.Exit(0)
-        
+
         client.delete_session(session_id)
         console.print(f"[green]Session deleted successfully[/green]")
-        
+
+    except Exception as e:
+        handle_error(e)
+
+
+@app.command("new-session")
+def new_session(
+    title: str = typer.Argument(..., help="Session title"),
+    message: Optional[str] = typer.Option(
+        None,
+        "--message",
+        "-m",
+        help="Initial message to send (default: headless mode instructions)",
+    ),
+):
+    """
+    Create a new session with a title, renaming any existing session with that title.
+
+    If a session with the given title exists, it gets renamed to '{title}-old'.
+    Then creates a new session with the title and sends an init message.
+
+    Example: oc new-session health
+    Example: oc new-session main --message "Hello, start working on X"
+    """
+    try:
+        client = OpencodeClientWrapper()
+        sessions_list = client.list_sessions()
+
+        # Find existing session with this title
+        existing = next((s for s in sessions_list if s.title == title), None)
+
+        if existing:
+            # Rename existing session
+            old_title = f"{title}-old"
+            console.print(
+                f"[yellow]Renaming existing '{title}' to '{old_title}'...[/yellow]"
+            )
+            client.rename_session(existing.id, old_title)
+            console.print(
+                f"[green]Renamed {existing.id[:12]}... to '{old_title}'[/green]"
+            )
+
+        # Create new session
+        console.print(f"[yellow]Creating new session '{title}'...[/yellow]")
+        session = client.create_session(title=title)
+        session_id = session.id
+        console.print(f"[green]Created session: {session_id}[/green]")
+
+        # Send init message
+        init_msg = message or (
+            "You are running in headless mode via telegram. "
+            'Use `notify telegram "message"` to send messages to Fergus. '
+            "Do not use text responses as they won't be seen."
+        )
+        console.print("[yellow]Sending init message...[/yellow]")
+        client.send_message(session_id, init_msg)
+        console.print(f"[green]Session '{title}' ready![/green]")
+        console.print(f"Session ID: {session_id}")
+
     except Exception as e:
         handle_error(e)
 
 
 if __name__ == "__main__":
     app()
+
 
 @app.command()
 def create_setup(
@@ -236,31 +313,31 @@ def create_setup(
 ):
     """
     Create a new session, send initial message, then rename to desired title.
-    
+
     This avoids OpenCode's auto-renaming behavior which happens on first message.
-    
+
     Example: oc create-setup "Interview Practice" "Activate chemify-context skill"
     """
     try:
         client = OpencodeClientWrapper()
-        
+
         # Create with temporary title
         console.print("[yellow]Creating session...[/yellow]")
         session = client.create_session(title="temp-session")
         session_id = session.id
         console.print(f"Session ID: {session_id}")
-        
+
         # Send initial message (triggers auto-rename)
         console.print("[yellow]Sending initial message...[/yellow]")
         client.send_message(session_id, message)
         console.print("[green]Message sent[/green]")
-        
+
         # Rename to desired title
         console.print(f"[yellow]Renaming to '{title}'...[/yellow]")
         client.rename_session(session_id, title)
         console.print(f"[green]Session created and configured![/green]")
         console.print(f"Session ID: {session_id}")
         console.print(f"Title: {title}")
-        
+
     except Exception as e:
         handle_error(e)
